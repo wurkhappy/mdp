@@ -95,7 +95,7 @@ func (self *mdBroker) dispatch(service *mdService, msg [][]byte) {
 	if len(msg) != 0 {
 		service.requests = append(service.requests, msg)
 	}
-	self.purgeWorkers()
+	self.purgeWorkers(service)
 	for service.waiting.Len() > 0 && len(service.requests) > 0 {
 		msg, service.requests = service.requests[0], service.requests[1:]
 		elem := service.waiting.Pop()
@@ -113,7 +113,6 @@ func (self *mdBroker) processClient(sender []byte, msg [][]byte) {
 		panic("Invalid msg")
 	}
 	service := msg[0]
-	log.Print(service)
 	//  Set reply return address to client sender
 	msg = append([][]byte{sender, nil}, msg[1:]...)
 	if string(service[:4]) == INTERNAL_SERVICE_PREFIX {
@@ -152,7 +151,6 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 			panic("Invalid msg")
 		}
 		service := msg[0]
-		log.Print(string(service))
 		//  Not first command in session or Reserved service name
 		if workerReady || string(service[:4]) == INTERNAL_SERVICE_PREFIX {
 			self.deleteWorker(worker, true)
@@ -192,14 +190,14 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 
 //  Look for & kill expired workers.
 //  Workers are oldest to most recent, so we stop at the first alive worker.
-func (self *mdBroker) purgeWorkers() {
+func (self *mdBroker) purgeWorkers(service *mdService) {
 	now := time.Now()
-	for elem := self.waiting.Front(); elem != nil; elem = self.waiting.Front() {
+	for elem := service.waiting.Front(); elem != nil; elem = elem.Next() {
 		worker, _ := elem.Value.(*mdbWorker)
 		log.Printf("CHECK %s %s %s", worker.service.name, worker.identity, worker.expiry)
 		if worker.expiry.After(now) {
-			self.waiting.Delete(worker)
-			self.waiting.PushBack(worker)
+			// self.waiting.Delete(worker)
+			// self.waiting.PushBack(worker)
 			break
 		}
 		log.Printf("DELETE %s %s", worker.service.name, worker.identity)
@@ -306,7 +304,7 @@ func (self *mdBroker) Run() {
 		}
 
 		if self.heartbeatAt.Before(time.Now()) {
-			self.purgeWorkers()
+			// self.purgeWorkers()
 			for elem := self.waiting.Front(); elem != nil; elem = elem.Next() {
 				worker, _ := elem.Value.(*mdbWorker)
 				self.sendToWorker(worker, MDPW_HEARTBEAT, nil, nil)
