@@ -101,6 +101,7 @@ func (self *mdBroker) dispatch(service *mdService, msg [][]byte) {
 		elem := service.waiting.Pop()
 		self.waiting.Remove(elem)
 		worker, _ := elem.Value.(*mdbWorker)
+		log.Printf("send to worker %s %s", worker.service.name, worker.identity)
 		self.sendToWorker(worker, MDPW_REQUEST, nil, msg)
 	}
 }
@@ -112,6 +113,7 @@ func (self *mdBroker) processClient(sender []byte, msg [][]byte) {
 		panic("Invalid msg")
 	}
 	service := msg[0]
+	log.Print(service)
 	//  Set reply return address to client sender
 	msg = append([][]byte{sender, nil}, msg[1:]...)
 	if string(service[:4]) == INTERNAL_SERVICE_PREFIX {
@@ -138,9 +140,9 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 			expiry:   time.Now().Add(HEARTBEAT_EXPIRY),
 		}
 		self.workers[identity] = worker
-		if self.verbose {
-			log.Printf("I: registering new worker: %s\n", identity)
-		}
+		// if self.verbose {
+		log.Printf("I: registering new worker: %s\n %s", identity)
+		// }
 	}
 
 	switch string(command) {
@@ -150,6 +152,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 			panic("Invalid msg")
 		}
 		service := msg[0]
+		log.Print(string(service))
 		//  Not first command in session or Reserved service name
 		if workerReady || string(service[:4]) == INTERNAL_SERVICE_PREFIX {
 			self.deleteWorker(worker, true)
@@ -159,6 +162,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 			self.workerWaiting(worker)
 		}
 	case MDPW_REPLY:
+		log.Print("reply")
 		if workerReady {
 			//  Remove & save client return envelope and insert the
 			//  protocol header and service name, then rewrap envelope.
@@ -170,6 +174,9 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 			self.deleteWorker(worker, true)
 		}
 	case MDPW_HEARTBEAT:
+		if worker.service != nil {
+			// log.Printf("heartbeat: ", worker.service.name)
+		}
 		if workerReady {
 			worker.expiry = time.Now().Add(HEARTBEAT_EXPIRY)
 		} else {
@@ -178,7 +185,6 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 	case MDPW_DISCONNECT:
 		self.deleteWorker(worker, false)
 	default:
-		log.Printf("command is :%s", string(command))
 		log.Println("E: invalid message:")
 		Dump(msg)
 	}
@@ -190,9 +196,13 @@ func (self *mdBroker) purgeWorkers() {
 	now := time.Now()
 	for elem := self.waiting.Front(); elem != nil; elem = self.waiting.Front() {
 		worker, _ := elem.Value.(*mdbWorker)
+		log.Printf("CHECK %s %s %s", worker.service.name, worker.identity, worker.expiry)
 		if worker.expiry.After(now) {
+			self.waiting.Delete(worker)
+			self.waiting.PushBack(worker)
 			break
 		}
+		log.Printf("DELETE %s %s", worker.service.name, worker.identity)
 		self.deleteWorker(worker, false)
 	}
 }
@@ -290,7 +300,6 @@ func (self *mdBroker) Run() {
 			} else if string(header) == MDPW_WORKER {
 				self.processWorker(sender, msg)
 			} else {
-				log.Printf("header is :%s", string(header))
 				log.Println("E: invalid message:")
 				Dump(msg)
 			}
