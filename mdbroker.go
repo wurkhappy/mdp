@@ -13,7 +13,7 @@ package mdp
 import (
 	"encoding/hex"
 	zmq "github.com/alecthomas/gozmq"
-	"log"
+	"fmt"
 	"time"
 )
 
@@ -57,7 +57,7 @@ func NewBroker(endpoint string, verbose bool) Broker {
 	socket, _ := context.NewSocket(zmq.ROUTER)
 	socket.SetLinger(0)
 	socket.Bind(endpoint)
-	log.Printf("I: MDP broker/0.1.1 is active at %s\n", endpoint)
+	fmt.Printf("I: MDP broker/0.1.1 is active at %s\n", endpoint)
 	return &mdBroker{
 		context:     context,
 		heartbeatAt: time.Now().Add(HEARTBEAT_INTERVAL),
@@ -101,7 +101,8 @@ func (self *mdBroker) dispatch(service *mdService, msg [][]byte) {
 		elem := service.waiting.Pop()
 		self.waiting.Remove(elem)
 		worker, _ := elem.Value.(*mdbWorker)
-		log.Printf("send to worker %s %s", worker.service.name, worker.identity)
+		fmt.Printf("send to worker %s %s", worker.service.name, worker.identity)
+		fmt.Print(string(msg[2]))
 		self.sendToWorker(worker, MDPW_REQUEST, nil, msg)
 	}
 }
@@ -140,7 +141,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 		}
 		self.workers[identity] = worker
 		// if self.verbose {
-		log.Printf("I: registering new worker: %s\n %s", identity)
+		fmt.Printf("I: registering new worker: %s\n %s", identity)
 		// }
 	}
 
@@ -160,7 +161,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 			self.workerWaiting(worker)
 		}
 	case MDPW_REPLY:
-		log.Print("reply")
+		fmt.Print("reply")
 		if workerReady {
 			//  Remove & save client return envelope and insert the
 			//  protocol header and service name, then rewrap envelope.
@@ -173,7 +174,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 		}
 	case MDPW_HEARTBEAT:
 		if worker.service != nil {
-			// log.Printf("heartbeat: ", worker.service.name)
+			// fmt.Printf("heartbeat: ", worker.service.name)
 		}
 		if workerReady {
 			worker.expiry = time.Now().Add(HEARTBEAT_EXPIRY)
@@ -183,7 +184,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 	case MDPW_DISCONNECT:
 		self.deleteWorker(worker, false)
 	default:
-		log.Println("E: invalid message:")
+		fmt.Println("E: invalid message:")
 		Dump(msg)
 	}
 }
@@ -194,13 +195,13 @@ func (self *mdBroker) purgeWorkers(service *mdService) {
 	now := time.Now()
 	for elem := service.waiting.Front(); elem != nil; elem = elem.Next() {
 		worker, _ := elem.Value.(*mdbWorker)
-		log.Printf("CHECK %s %s %s", worker.service.name, worker.identity, worker.expiry)
+		fmt.Printf("CHECK %s %s %s", worker.service.name, worker.identity, worker.expiry)
 		if worker.expiry.After(now) {
 			// self.waiting.Delete(worker)
 			// self.waiting.PushBack(worker)
 			break
 		}
-		log.Printf("DELETE %s %s", worker.service.name, worker.identity)
+		fmt.Printf("DELETE %s %s", worker.service.name, worker.identity)
 		self.deleteWorker(worker, false)
 	}
 }
@@ -231,7 +232,7 @@ func (self *mdBroker) sendToWorker(worker *mdbWorker, command string, option []b
 	msg = append([][]byte{worker.address, nil, []byte(MDPW_WORKER), []byte(command)}, msg...)
 
 	if self.verbose {
-		log.Printf("I: sending %X to worker\n", command)
+		fmt.Printf("I: sending %X to worker\n", command)
 		Dump(msg)
 	}
 	self.socket.SendMultipart(msg, 0)
@@ -285,7 +286,7 @@ func (self *mdBroker) Run() {
 		if item := items[0]; item.REvents&zmq.POLLIN != 0 {
 			msg, _ := self.socket.RecvMultipart(0)
 			if self.verbose {
-				log.Printf("I: received message:")
+				fmt.Printf("I: received message:")
 				Dump(msg)
 			}
 
@@ -298,7 +299,7 @@ func (self *mdBroker) Run() {
 			} else if string(header) == MDPW_WORKER {
 				self.processWorker(sender, msg)
 			} else {
-				log.Println("E: invalid message:")
+				fmt.Println("E: invalid message:")
 				Dump(msg)
 			}
 		}
