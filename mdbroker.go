@@ -101,8 +101,8 @@ func (self *mdBroker) dispatch(service *mdService, msg [][]byte) {
 		elem := service.waiting.Pop()
 		self.waiting.Remove(elem)
 		worker, _ := elem.Value.(*mdbWorker)
-		fmt.Printf("send to worker %s %s", worker.service.name, worker.identity)
-		fmt.Print(string(msg[2]))
+		fmt.Println("send to worker %s %s", worker.service.name, worker.identity)
+		fmt.Println(string(msg[2]))
 		self.sendToWorker(worker, MDPW_REQUEST, nil, msg)
 	}
 }
@@ -141,7 +141,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 		}
 		self.workers[identity] = worker
 		// if self.verbose {
-		fmt.Printf("I: registering new worker: %s\n %s", identity)
+		fmt.Printf("I: registering new worker: %s\n", identity)
 		// }
 	}
 
@@ -195,13 +195,13 @@ func (self *mdBroker) purgeWorkers(service *mdService) {
 	now := time.Now()
 	for elem := service.waiting.Front(); elem != nil; elem = elem.Next() {
 		worker, _ := elem.Value.(*mdbWorker)
-		fmt.Printf("CHECK %s %s %s", worker.service.name, worker.identity, worker.expiry)
+		fmt.Println("CHECK ", worker.service.name, worker.identity, worker.expiry)
 		if worker.expiry.After(now) {
 			// self.waiting.Delete(worker)
 			// self.waiting.PushBack(worker)
 			break
 		}
-		fmt.Printf("DELETE %s %s", worker.service.name, worker.identity)
+		fmt.Println("DELETE ", worker.service.name, worker.identity)
 		self.deleteWorker(worker, false)
 	}
 }
@@ -232,7 +232,7 @@ func (self *mdBroker) sendToWorker(worker *mdbWorker, command string, option []b
 	msg = append([][]byte{worker.address, nil, []byte(MDPW_WORKER), []byte(command)}, msg...)
 
 	if self.verbose {
-		fmt.Printf("I: sending %X to worker\n", command)
+		fmt.Println("I: sending %X to worker\n", command)
 		Dump(msg)
 	}
 	self.socket.SendMultipart(msg, 0)
