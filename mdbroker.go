@@ -109,6 +109,7 @@ func (self *mdBroker) dispatch(service *mdService, msg [][]byte) {
 
 // Process a request coming from a client.
 func (self *mdBroker) processClient(sender []byte, msg [][]byte) {
+	fmt.Println("client")
 	//  Service name + body
 	if len(msg) < 2 {
 		panic("Invalid msg")
