@@ -12,9 +12,10 @@ package mdp
 
 import (
 	"encoding/hex"
-	zmq "github.com/alecthomas/gozmq"
 	"fmt"
+	zmq "github.com/alecthomas/gozmq"
 	"time"
+	"encoding/json"
 )
 
 const (
@@ -107,6 +108,11 @@ func (self *mdBroker) dispatch(service *mdService, msg [][]byte) {
 	}
 }
 
+type ServiceResp struct {
+	StatusCode float64 `json:"status_code"`
+	Body       []byte  `json:"body"`
+}
+
 // Process a request coming from a client.
 func (self *mdBroker) processClient(sender []byte, msg [][]byte) {
 	fmt.Println("client")
@@ -120,7 +126,18 @@ func (self *mdBroker) processClient(sender []byte, msg [][]byte) {
 	if string(service[:4]) == INTERNAL_SERVICE_PREFIX {
 		self.serviceInternal(service, msg)
 	} else {
-		self.dispatch(self.requireService(string(service)), msg)
+		srvc := self.requireService(string(service))
+		if srvc.waiting.Len() == 0 {
+			payload := new(ServiceResp)
+			payload.StatusCode = 404
+			payload.Body = []byte(`{"status_code": 404, "description":"service unreachable"}`)
+			p, _ := json.Marshal(payload)
+			//  insert the protocol header and service name after the routing envelope
+			msg = append([][]byte{sender, nil, []byte(MDPC_CLIENT), []byte(string(service)), p})
+			self.socket.SendMultipart(msg, 0)
+			return
+		}
+		self.dispatch(srvc, msg)
 	}
 }
 
