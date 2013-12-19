@@ -12,10 +12,10 @@ package mdp
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	zmq "github.com/alecthomas/gozmq"
 	"time"
-	"encoding/json"
 )
 
 const (
@@ -211,7 +211,7 @@ func (self *mdBroker) processWorker(sender []byte, msg [][]byte) {
 //  Workers are oldest to most recent, so we stop at the first alive worker.
 func (self *mdBroker) purgeWorkers(service *mdService) {
 	now := time.Now()
-	for elem := service.waiting.Front(); elem != nil; elem = elem.Next() {
+	for elem := service.waiting.Front(); elem != nil; elem = service.waiting.Front() {
 		worker, _ := elem.Value.(*mdbWorker)
 		fmt.Println("CHECK ", worker.service.name, worker.identity, worker.expiry)
 		if worker.expiry.After(now) {
@@ -323,6 +323,7 @@ func (self *mdBroker) Run() {
 		}
 
 		if self.heartbeatAt.Before(time.Now()) {
+
 			// self.purgeWorkers()
 			for elem := self.waiting.Front(); elem != nil; elem = elem.Next() {
 				worker, _ := elem.Value.(*mdbWorker)
