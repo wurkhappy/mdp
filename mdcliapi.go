@@ -21,18 +21,18 @@ type MDClient struct {
 	broker  string
 	client  *zmq.Socket
 	context *zmq.Context
-	retries int
-	timeout time.Duration
+	Retries int
+	Timeout time.Duration
 	verbose bool
 }
 
-func NewClient(broker string, verbose bool) Client {
+func NewClient(broker string, verbose bool) *MDClient {
 	context, _ := zmq.NewContext()
 	self := &MDClient{
 		broker:  broker,
 		context: context,
-		retries: 3,
-		timeout: 2500 * time.Millisecond,
+		Retries: 3,
+		Timeout: 2500 * time.Millisecond,
 		verbose: verbose,
 	}
 	self.reconnect()
@@ -69,13 +69,13 @@ func (self *MDClient) Send(service []byte, request [][]byte) (reply [][]byte) {
 		Dump(request)
 	}
 
-	for retries := self.retries; retries > 0; {
+	for retries := self.Retries; retries > 0; {
 		self.client.SendMultipart(frame, 0)
 		items := zmq.PollItems{
 			zmq.PollItem{Socket: self.client, Events: zmq.POLLIN},
 		}
 
-		_, err := zmq.Poll(items, self.timeout)
+		_, err := zmq.Poll(items, self.Timeout)
 		if err != nil {
 			panic(err) //  Interrupted
 		}
