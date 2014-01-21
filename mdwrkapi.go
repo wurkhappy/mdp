@@ -14,7 +14,7 @@ import (
 
 type Worker interface {
 	Close()
-	Recv([][]byte) [][]byte
+	Recv([][]byte, chan bool) [][]byte
 }
 
 type mdWorker struct {
@@ -83,7 +83,7 @@ func (self *mdWorker) Close() {
 	self.context.Close()
 }
 
-func (self *mdWorker) Recv(reply [][]byte) (msg [][]byte) {
+func (self *mdWorker) Recv(reply [][]byte, shutChan chan bool) (msg [][]byte) {
 	//  Format and send the reply if we were provided one
 
 	if len(reply) == 0 && self.expectReply {
@@ -101,13 +101,25 @@ func (self *mdWorker) Recv(reply [][]byte) (msg [][]byte) {
 	self.expectReply = true
 
 	for {
+		select {
+		case <-shutChan:
+			log.Print("Worker: Completed : KILL REQUESTED")
+			msg = nil
+			return
+
+		default:
+
+		}
 		items := zmq.PollItems{
 			zmq.PollItem{Socket: self.worker, Events: zmq.POLLIN},
 		}
 
 		_, err := zmq.Poll(items, self.heartbeat)
 		if err != nil {
-			panic(err) //  Interrupted
+			//interrupted
+			log.Print("interrupt")
+			msg = nil
+			continue
 		}
 
 		if item := items[0]; item.REvents&zmq.POLLIN != 0 {
