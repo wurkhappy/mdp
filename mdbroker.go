@@ -103,7 +103,6 @@ func (self *mdBroker) dispatch(service *mdService, msg [][]byte) {
 		self.waiting.Remove(elem)
 		worker, _ := elem.Value.(*mdbWorker)
 		fmt.Println("send to worker %s %s", worker.service.name, worker.identity)
-		fmt.Println(string(msg[2]))
 		self.sendToWorker(worker, MDPW_REQUEST, nil, msg)
 	}
 }
