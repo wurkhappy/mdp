@@ -120,8 +120,7 @@ func (self *mdBroker) processClient(sender []byte, msg [][]byte) {
 		panic("Invalid msg")
 	}
 	service := msg[0]
-	fmt.Println(msg)
-	fmt.Println(string(msg[1]))
+
 	//  Set reply return address to client sender
 	msg = append([][]byte{sender, nil}, msg[1:]...)
 	if string(service[:4]) == INTERNAL_SERVICE_PREFIX {
