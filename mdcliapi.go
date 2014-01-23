@@ -63,13 +63,11 @@ func (self *MDClient) Send(service []byte, request [][]byte) (reply [][]byte) {
 	//  Prefix request with protocol frames
 	//  Frame 1: "MDPCxy" (six bytes, MDP/Client x.y)
 	//  Frame 2: Service name (printable string)
-	log.Println(string(service))
 	frame := append([][]byte{[]byte(""), []byte(MDPC_CLIENT), service}, request...)
 	if self.verbose {
 		log.Printf("I: send request to '%s' service:", service)
 		Dump(request)
 	}
-	log.Println(frame)
 
 	for retries := self.Retries; retries > 0; {
 		self.client.SendMultipart(frame, 0)
