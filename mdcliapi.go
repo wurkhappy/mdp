@@ -31,7 +31,7 @@ func NewClient(broker string, verbose bool) *MDClient {
 	self := &MDClient{
 		broker:  broker,
 		context: context,
-		Retries: 3,
+		Retries: 1,
 		Timeout: 2500 * time.Millisecond,
 		verbose: verbose,
 	}
